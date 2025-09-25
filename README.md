@@ -11,7 +11,7 @@ Setup Instructions:
     pip install -r requirements.txt
 
 2. Create a .env file in the root directory
-    DATABASE_URL=mysql+pymysql://youruser:yourpassword@127.0.0.1:3306/healthdb?charset=utf8mb4
+    DATABASE_URL=mysql+pymysql://youruser:yourpassword@127.0.0.1:3306/assignment02db?charset=utf8mb4
     PORT=8080
 
 3. Setup Database
@@ -19,7 +19,7 @@ Setup Instructions:
     sudo service mysql start
 
     # Create database(only once)
-    mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS healthdb;"
+    mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS assignment02db;"
 
 4. Run the application(The server will start at: http://127.0.0.1:8080/healthz)
     uvicorn app.main:app --host 0.0.0.0 --port 8080
