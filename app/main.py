@@ -10,6 +10,11 @@ from app.models.health_check import HealthCheck
 from alembic import command
 from alembic.config import Config as alembicConfig
 
+from app.models.user import User
+from app.models.product import Product
+from app.routers.user import router as user_router
+from app.routers.product import router as product_router
+
 app = FastAPI()
 
 @app.on_event("startup")
@@ -23,6 +28,10 @@ NO_CACHE = {
     "Pragma": "no-cache",
     "X-Content-Type-Options": "nosniff",
 }
+
+# add routers
+app.include_router(user_router)
+app.include_router(product_router)
 
 # Only GET：other methods -> 405, no body
 @app.api_route("/healthz", methods=["POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])

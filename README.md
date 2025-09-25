@@ -1,62 +1,222 @@
 # webapp
-Assignment01 Health check API
+Assignment02
 
-Setup Instructions:
-1. Install dependencies
-    # Create virtual environment
-    python3 -m venv .venv
-    source .venv/bin/activate
+## Setup Instructions:
+1. Install dependencies  
 
-    # Install required packages
-    pip install -r requirements.txt
+```bash
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+``` 
+
+
+```bash
+# Install required packages
+pip install -r requirements.txt
+```
 
 2. Create a .env file in the root directory
-    DATABASE_URL=mysql+pymysql://youruser:yourpassword@127.0.0.1:3306/healthdb?charset=utf8mb4
+    DATABASE_URL=mysql+pymysql://youruser:yourpassword@127.0.0.1:3306/assignment02db?charset=utf8mb4
     PORT=8080
 
 3. Setup Database
-    # Make sure MySQL is running
-    sudo service mysql start
+    
+```bash
+# Make sure MySQL is running
+sudo service mysql start
+```
 
-    # Create database(only once)
-    mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS healthdb;"
+    
+```bash
+# Create database(only once)
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS assignment02db;"
+```
 
-4. Run the application(The server will start at: http://127.0.0.1:8080/healthz)
-    uvicorn app.main:app --host 0.0.0.0 --port 8080
+4. Run the application(The server will start at: http://127.0.0.1:8080/)
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8080
+```
 
 5. API testing
-    # If localhost does not work on your system, please use 127.0.0.1
-    # HTTP/1.1 200 OK
-    curl -vvvv http://localhost:8080/healthz
+    If localhost does not work on your system, please use 127.0.0.1  
+    use postman
+    ### User  
+    1. create a user account -> 201  
+        Method: POST  
+        URL: http://localhost:8080/v1/user  
+        Body: JSON  
+        {  
+            "first_name": "Mark",  
+            "last_name": "Lee",  
+            "username": "marklee@google.com",  
+            "password": "mark0802!"  
+        }  
 
-    # HTTP/1.1 400 Bad Request
-    curl -vvv -X GET http://localhost:8080/healthz -d "x=1"
+<!-- curl -i -X POST http://localhost:8080/v1/user -H "Content-Type: application/json" -d '{"first_name":"Mark","last_name":"Lee","username":"marklee@google.com","password":"mark0802!"}'   -->
+
+    2. duplicate user -> 400  
+        send again  
+
+    3. create other user -> 201  
+        Method: POST  
+        URL: http://localhost:8080/v1/user  
+        Body: JSON  
+        {  
+            "first_name": "Johnny",  
+            "last_name": "Suh",  
+            "username": "johnny@google.com",  
+            "password": "johnny0209!"  
+        }  
+
+<!-- curl -i -X POST http://localhost:8080/v1/user -H "Content-Type: application/json" -d '{"first_name":"Johnny","last_name":"Suh","username":"johnny@google.com","password":"johnny0209!"}'   -->
+
+
+    4. get user account information -> 200  
+        Method: GET  
+        URL: http://localhost:8080/v1/user/{id}  
+        Authorization: Basic Auth  
+        Username: marklee@google.com  
+        Password: mark0802!  
+<!-- 
+curl -i -u marklee@google.com:mark0802! http://localhost:8080/v1/user/{id}   -->
+
+    5. get other -> 403  
+        Method: GET  
+        URL: http://localhost:8080/v1/user/{other's id}  
+        Authorization: Basic Auth  
+        Username: marklee@google.com  
+        Password: mark0802!  
+
+    6. update with extra field -> 400  
+        Method: PUT  
+        URL: http://localhost:8080/v1/user/{id}  
+        Authorization: Basic Auth  
+        Body:  
+        {  
+            "id": 999,  
+            "first_name": "NewAlice"  
+        }  
+
+<!-- curl -i -X PUT http://localhost:8080/v1/user/{id} -u marklee@google.com:mark0802! -H "Content-Type: application/json" -d '{"id":999,"first_name":"NewAlice"}'   -->
+
+
+    7. update user's account information -> 204  
+        Method: PUT  
+        URL: http://localhost:8080/v1/user/{id}  
+        Authorization: Basic Auth  
+        Username: marklee@google.com  
+        Password: mark0802!  
+        Body:  
+        {  
+            "first_name": "MarkNew",  
+            "last_name": "LeeNew",  
+            "password": "NewSecret123!"  
+        }  
+ 
+    ### product  
+    8. add a new product -> 201  
+        Method: POST  
+        URL: http://localhost:8080/v1/product  
+        Authorization: Basic Auth  
+        Body:  
+        {  
+            "name": "Mouse",  
+            "description": "USB mouse",  
+            "sku": "SKU-1",  
+            "manufacturer": "Acme",  
+            "quantity": 1  
+        }  
+
+<!-- curl -i -X POST http://localhost:8080/v1/product -u johnny@google.com:johnny0209! -H "Content-Type: application/json" -d '{"name":"Mouse","description":"USB mouse","sku":"SKU-1","manufacturer":"Acme","quantity":1}'     -->
+
+    9.  get product information -> 200  
+        Method: GET   
+        URL:http://localhost:8080/v1/product/{id}  
+
+    10. negative quantity -> 422  
+        Method: POST  
+        URL: http://localhost:8080/v1/product  
+        Authorization: Basic Auth  
+        Body:  
+        {  
+            "name": "Wrong",  
+            "description": "negative quantity",  
+            "sku": "SKU-1",  
+            "manufacturer": "Acme",  
+            "quantity": -1  
+        }  
+
+    11. non-owner update product PUT (update other's product) -> 403  
+        Method: PUT  
+        URL: http://localhost:8080/v1/product/{id}  
+        Authorization: Basic Auth(other)  
+        Body:  
+        {  
+            "name": "Keyboard",  
+            "description": "update fail",  
+            "sku": "SKU-1",  
+            "manufacturer": "Acme",  
+            "quantity": 2  
+        }  
+
+    12. owner update product PATCH (owner updates product) -> 204  
+        Method: PATCH  
+        URL: http://localhost:8080/v1/product/{id}  
+        Authorization: Basic Auth  
+        Body:  
+        {  
+            "quantity": 5  
+        }  
+
+<!-- curl -i -X PATCH http://localhost:8080/v1/product/{id} -u johnny@google.com:johnny0209! -H "Content-Type: application/json" -d '{"quantity":5}'   -->
+
+
+    13. owner DELETE product -> 204  
+        Method: DELETE  
+        URL: http://localhost:8080/v1/product/{id}  
+        Authorization: Basic Auth  
+<!-- 
+curl -i -X DELETE http://localhost:8080/v1/product/{id} -u johnny@google.com:johnny0209!   -->
+
+
+
+
+
+6. Check db
+    If you want to check the db:  
     
-    curl -vvvv "http://127.0.0.1:8080/healthz?id=1"
+```bash
+# enter MySQL
+mysql -u root -p
+```
 
-    # HTTP/1.1 405 Method Not Allowed
-    curl -vvvv -XPUT http://localhost:8080/healthz
+    
+```bash
+# show all database
+SHOW DATABASES;
+```
 
-    # HTTP/1.1 503 Service Unavailable
-    sudo service mysql stop
-    curl -vvvv http://localhost:8080/healthz
+    
+```bash
+# use assignment02db
+USE assignment02db;
+```
 
+    
+```bash
+# show all tables
+SHOW TABLES;
+```
 
-    If you want to check the db:
-    # enter MySQL
-    mysql -u root -p
+    
+```bash
+# view the table struture(columns and data types)
+DESCRIBE users;
+```
 
-    # all database
-    SHOW DATABASES;
-
-    # use healthdb
-    USE healthdb;
-
-    # show all tables
-    SHOW TABLES;
-
-    # view the table struture(columns and data types)
-    DESCRIBE health_checks;
-
-    # view data in the table
-    SELECT * FROM health_checks;
+    
+```bash
+# view data in the table
+SELECT * FROM users;
+```
