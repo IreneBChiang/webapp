@@ -8,7 +8,7 @@ class UserBase(BaseModel):
     username: EmailStr  # email -> username
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=8, writeOnly=True, description="password is write only, never return")
 
 # for output
 class UserOut(BaseModel):
@@ -16,8 +16,8 @@ class UserOut(BaseModel):
     first_name: str
     last_name: str
     username: EmailStr
-    account_created: datetime
-    account_updated: datetime
+    account_created: datetime = Field(..., readOnly=True)
+    account_updated: datetime = Field(..., readOnly=True)
 
     class Config:
         from_attributes = True
