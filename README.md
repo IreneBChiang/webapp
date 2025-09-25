@@ -41,7 +41,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080
 5. API testing
     If localhost does not work on your system, please use 127.0.0.1  
     use postman
-    ### User
+    ### User  
     1. create a user account -> 201  
         Method: POST  
         URL: http://localhost:8080/v1/user  
@@ -53,7 +53,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080
             "password": "mark0802!"  
         }  
 
-curl -i -X POST http://localhost:8080/v1/user -H "Content-Type: application/json" -d '{"first_name":"Mark","last_name":"Lee","username":"marklee@google.com","password":"mark0802!"}'  
+<!-- curl -i -X POST http://localhost:8080/v1/user -H "Content-Type: application/json" -d '{"first_name":"Mark","last_name":"Lee","username":"marklee@google.com","password":"mark0802!"}'   -->
 
     2. duplicate user -> 400  
         send again  
@@ -69,7 +69,7 @@ curl -i -X POST http://localhost:8080/v1/user -H "Content-Type: application/json
             "password": "johnny0209!"  
         }  
 
-curl -i -X POST http://localhost:8080/v1/user -H "Content-Type: application/json" -d '{"first_name":"Johnny","last_name":"Suh","username":"johnny@google.com","password":"johnny0209!"}'  
+<!-- curl -i -X POST http://localhost:8080/v1/user -H "Content-Type: application/json" -d '{"first_name":"Johnny","last_name":"Suh","username":"johnny@google.com","password":"johnny0209!"}'   -->
 
 
     4. get user account information -> 200  
@@ -78,8 +78,8 @@ curl -i -X POST http://localhost:8080/v1/user -H "Content-Type: application/json
         Authorization: Basic Auth  
         Username: marklee@google.com  
         Password: mark0802!  
-
-curl -i -u marklee@google.com:mark0802! http://localhost:8080/v1/user/{id}  
+<!-- 
+curl -i -u marklee@google.com:mark0802! http://localhost:8080/v1/user/{id}   -->
 
     5. get other -> 403  
         Method: GET  
@@ -98,7 +98,7 @@ curl -i -u marklee@google.com:mark0802! http://localhost:8080/v1/user/{id}
             "first_name": "NewAlice"  
         }  
 
-curl -i -X PUT http://localhost:8080/v1/user/{id} -u marklee@google.com:mark0802! -H "Content-Type: application/json" -d '{"id":999,"first_name":"NewAlice"}'  
+<!-- curl -i -X PUT http://localhost:8080/v1/user/{id} -u marklee@google.com:mark0802! -H "Content-Type: application/json" -d '{"id":999,"first_name":"NewAlice"}'   -->
 
 
     7. update user's account information -> 204  
@@ -128,7 +128,7 @@ curl -i -X PUT http://localhost:8080/v1/user/{id} -u marklee@google.com:mark0802
             "quantity": 1  
         }  
 
-curl -i -X POST http://localhost:8080/v1/product -u johnny@google.com:johnny0209! -H "Content-Type: application/json" -d '{"name":"Mouse","description":"USB mouse","sku":"SKU-1","manufacturer":"Acme","quantity":1}'    
+<!-- curl -i -X POST http://localhost:8080/v1/product -u johnny@google.com:johnny0209! -H "Content-Type: application/json" -d '{"name":"Mouse","description":"USB mouse","sku":"SKU-1","manufacturer":"Acme","quantity":1}'     -->
 
     9.  get product information -> 200  
         Method: GET   
@@ -169,15 +169,15 @@ curl -i -X POST http://localhost:8080/v1/product -u johnny@google.com:johnny0209
             "quantity": 5  
         }  
 
-curl -i -X PATCH http://localhost:8080/v1/product/{id} -u johnny@google.com:johnny0209! -H "Content-Type: application/json" -d '{"quantity":5}'  
+<!-- curl -i -X PATCH http://localhost:8080/v1/product/{id} -u johnny@google.com:johnny0209! -H "Content-Type: application/json" -d '{"quantity":5}'   -->
 
 
     13. owner DELETE product -> 204  
         Method: DELETE  
         URL: http://localhost:8080/v1/product/{id}  
         Authorization: Basic Auth  
-
-curl -i -X DELETE http://localhost:8080/v1/product/{id} -u johnny@google.com:johnny0209!  
+<!-- 
+curl -i -X DELETE http://localhost:8080/v1/product/{id} -u johnny@google.com:johnny0209!   -->
 
 
 
