@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 from starlette.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
@@ -32,6 +33,12 @@ NO_CACHE = {
 # add routers
 app.include_router(user_router)
 app.include_router(product_router)
+
+# no 500
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
 
 # Only GET：other methods -> 405, no body
 @app.api_route("/healthz", methods=["POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
