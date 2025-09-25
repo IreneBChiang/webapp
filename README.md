@@ -4,13 +4,14 @@ Assignment02
 ## Setup Instructions:
 1. Install dependencies  
     Create virtual environment
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
     Install required packages
-    
+
 ```bash
 pip install -r requirements.txt
 ```
