@@ -12,22 +12,23 @@ jobs:
     services:
       mysql:
         image: mysql:8
-        # 服務對外只暴露到 runner 本機，實際連線主機仍以 Secrets 注入
-        ports: [ "${{ secrets.DB_PORT }}:3306" ]
+        # 注意：services.ports 不能用 ${{ }}，需固定字串
+        ports: [ "3306:3306" ]
         env:
           MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}
           MYSQL_DATABASE: ${{ secrets.DB_NAME }}
+        # 注意：options 也不能用 ${{ }}，
+        # 在容器裡用 $MYSQL_ROOT_PASSWORD（前面 env 已經傳進去）
         options: >-
-          --health-cmd="mysqladmin ping -h localhost -p${{ secrets.DB_PASSWORD }} | grep 'mysqld is alive'"
+          --health-cmd="mysqladmin ping -h localhost -p$MYSQL_ROOT_PASSWORD | grep 'mysqld is alive'"
           --health-interval=5s --health-timeout=5s --health-retries=20
 
     env:
       DB_HOST: ${{ secrets.DB_HOST }}
-      DB_PORT: ${{ secrets.DB_PORT }}
+      DB_PORT: ${{ secrets.DB_PORT }}           # 仍可在其他地方用（非 services 區域）
       DB_USER: ${{ secrets.DB_USER }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       DB_NAME: ${{ secrets.DB_NAME }}
-      # 用 Secrets 動態拼接完整連線字串（含 charset=utf8mb4）
       DATABASE_URL: "mysql+pymysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}?charset=utf8mb4"
 
     steps:
@@ -52,7 +53,6 @@ jobs:
             sleep 2
           done
 
-      # Alembic 會從 env 取得 DATABASE_URL
       - name: Run Alembic migrations
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
