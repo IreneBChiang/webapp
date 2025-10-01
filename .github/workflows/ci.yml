@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8
+        # 服務對外只暴露到 runner 本機，實際連線主機仍以 Secrets 注入
+        ports: [ "${{ secrets.DB_PORT }}:3306" ]
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.DB_NAME }}
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -p${{ secrets.DB_PASSWORD }} | grep 'mysqld is alive'"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      # 用 Secrets 動態拼接完整連線字串（含 charset=utf8mb4）
+      DATABASE_URL: "mysql+pymysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}?charset=utf8mb4"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies & MySQL client
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          sudo apt-get update && sudo apt-get install -y mysql-client
+
+      - name: Wait for DB
+        run: |
+          for i in {1..30}; do
+            mysqladmin ping -h ${DB_HOST:-127.0.0.1} -P ${DB_PORT} -u${DB_USER} -p"${DB_PASSWORD}" --silent && break
+            sleep 2
+          done
+
+      # Alembic 會從 env 取得 DATABASE_URL
+      - name: Run Alembic migrations
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: alembic upgrade head
+
+      - name: Run pytest (with JUnit report)
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: pytest -q --junitxml=pytest.xml
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-report
+          path: pytest.xml
