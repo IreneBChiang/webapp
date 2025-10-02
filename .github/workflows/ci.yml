@@ -18,6 +18,7 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}
           MYSQL_DATABASE: ${{ secrets.DB_NAME }}
+        # check MySQL service health
         options: >-
           --health-cmd="mysqladmin ping -h localhost -p$MYSQL_ROOT_PASSWORD | grep 'mysqld is alive'"
           --health-interval=5s --health-timeout=5s --health-retries=20
@@ -34,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python on runner
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -79,7 +80,7 @@ jobs:
           done
           echo "API not ready in time"; echo "---- tail server.log ----"; tail -n 200 server.log; exit 1
 
-      - name: Run pytest (with JUnit report)
+      - name: Run pytest with JUnit report
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
         run: pytest -q --junitxml=pytest.xml

@@ -24,17 +24,18 @@ def test_user_create_success_and_get_self(base_url):
     assert "password" not in body
     uid = body["id"]
 
+    # get self -> 200
     h = _auth(email, "Secret123!")
     r2 = requests.get(f"{base_url}/user/{uid}", headers=h)
-    assert r2.status_code == 200
+    assert r2.status_code == 200, r2.text
     assert r2.json()["username"] == email
 
-    # username is the same
+    # use PUT to update user -> 204
     new_payload = {"first_name": "Alicia","last_name": "Wang","password": "NewPass456!"}
     r3 = requests.put(f"{base_url}/user/{uid}", headers=h, json=new_payload)
-    assert r3.status_code in (200, 204), r3.text
+    assert r3.status_code == 204, r3.text
 
-    # new password
+    # use new password
     h_new = _auth(email, "NewPass456!")
     r4 = requests.get(f"{base_url}/user/{uid}", headers=h_new)
     assert r4.status_code == 200, r4.text
@@ -69,13 +70,13 @@ def test_product_create_read_update_delete_as_owner(base_url):
 
     # read
     r2 = requests.get(f"{base_url}/product/{pid}", headers=h)
-    assert r2.status_code == 200
+    assert r2.status_code == 200, r2.text
     assert r2.json()["id"] == pid
 
     # update (use patch)
     r3 = requests.patch(f"{base_url}/product/{pid}", headers=h, json={"quantity": 7})
-    assert r3.status_code in (200, 204), r3.text
+    assert r3.status_code == 204, r3.text
 
     # delete
     r4 = requests.delete(f"{base_url}/product/{pid}", headers=h)
-    assert r4.status_code in (200, 204), r4.text
+    assert r4.status_code == 204, r4.text
