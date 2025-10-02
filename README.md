@@ -1,6 +1,17 @@
-# webapp
+# webapp  
 Assignment03  
-Integration Tests
+Integration Tests and a GitHub Actions workflow for continuous integration.  
+## Integration Tests  
+All test cases are under the tests folder.  
+The workflow uses MySQL, Alembic for migrations, and pytest for testing.  
+## CI Workflow  
+The workflow will run automatically on any push to a branch and any pull request to main in organization.  
+The steps:  
+1. Set up Python environment.  
+2. Start a MySQL service.  
+3. Run Alembic migrations.  
+4. Start the API server with Uvicorn.  
+5. Run pytest integration tests.  
 
 ## Setup Instructions:
 1. Install dependencies  
