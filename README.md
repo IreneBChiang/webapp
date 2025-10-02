@@ -13,6 +13,7 @@ The steps:
 4. Start the API server with Uvicorn.  
 5. Run pytest integration tests.  
 
+Assignment02
 ## Setup Instructions:
 1. Install dependencies  
 
