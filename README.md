@@ -11,7 +11,9 @@ The steps:
 2. Start a MySQL service.  
 3. Run Alembic migrations.  
 4. Start the API server with Uvicorn.  
-5. Run pytest integration tests.  
+5. Run pytest integration tests.   
+
+update for demo
 
 Assignment02
 ## Setup Instructions:
