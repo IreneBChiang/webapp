@@ -98,3 +98,8 @@ jobs:
           path: |
             pytest.xml
             server.log
+
+      - name: Force fail
+        run: |
+          echo "Testing failure"
+          exit 1
