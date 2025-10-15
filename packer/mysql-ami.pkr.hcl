@@ -52,14 +52,14 @@ source "amazon-ebs" "ubuntu2404" {
   ami_users     = [var.demo_account_id]
   source_ami_filter {
     filters = {
-      name = "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-amd64-server-*"
-      root-device-type = "ebs"
+      name                = "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-amd64-server-*"
+      root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
     owners      = ["099720109477"]
     most_recent = true
   }
-  tags = { Project="csye6225", Purpose="A05" }
+  tags = { Project = "csye6225", Purpose = "A05" }
 }
 
 build {
