@@ -1,0 +1,12 @@
+name: packer-check
+on: { pull_request: { paths: [ 'packer/**', 'scripts/**', 'start.sh' ] } }
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-packer@v3
+      - run: packer fmt -recursive . && test -z "$(git status --porcelain)" || (git --no-pager diff && exit 1)
+        working-directory: packer
+      - run: packer init . && packer validate .
+        working-directory: packer
