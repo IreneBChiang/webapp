@@ -1,15 +1,48 @@
 packer {
-  required_plugins { amazon = { source = "github.com/hashicorp/amazon", version = ">= 1.2.0" } }
+  required_plugins {
+    amazon = {
+      source  = "github.com/hashicorp/amazon"
+      version = ">= 1.2.0"
+    }
+  }
 }
 
-variable "region"         { type = string }
-variable "demo_account_id"{ type = string }
-variable "app_artifact"   { type = string }
-variable "app_port"       { type = number  default = 8080 }
-variable "db_name"        { type = string  default = "assignment05" }
-variable "db_user"        { type = string  default = "app_user" }
-variable "db_pass"        { type = string  sensitive = true }
-variable "service_name"   { type = string  default = "myapp" }
+variable "region" {
+  type = string
+}
+
+variable "demo_account_id" {
+  type = string
+}
+
+variable "app_artifact" {
+  type = string
+}
+
+variable "app_port" {
+  type    = number
+  default = 8080
+}
+
+variable "db_name" {
+  type    = string
+  default = "assignment05"
+}
+
+variable "db_user" {
+  type    = string
+  default = "app_user"
+}
+
+variable "db_pass" {
+  type      = string
+  sensitive = true
+}
+
+variable "service_name" {
+  type    = string
+  default = "myapp"
+}
 
 source "amazon-ebs" "ubuntu2404" {
   region        = var.region
