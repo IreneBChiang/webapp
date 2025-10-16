@@ -1,7 +1,7 @@
 name: packer-check
 on:
-  pull_request:
-    paths: [ 'packer/**', 'scripts/**', 'start.sh' ]
+  pull_request: {}
+  workflow_dispatch: {}
 
 jobs:
   check:
