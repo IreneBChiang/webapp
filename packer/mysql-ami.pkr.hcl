@@ -123,7 +123,7 @@ build {
       "sudo chmod +x /opt/myapp/start.sh",
       "command -v dos2unix >/dev/null 2>&1 && sudo dos2unix /opt/myapp/start.sh || true",
       "cd /opt/myapp && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt",
-      "cat <<ENV | sudo tee /etc/myapp/.env >/dev/null\nAPP_PORT=${var.app_port}\nAPP_DB_ENGINE=mysql\nAPP_DB_HOST=127.0.0.1\nAPP_DB_PORT=3306\nAPP_DB_NAME=${var.db_name}\nAPP_DB_USER=${var.db_user}\nAPP_DB_PASS=${var.db_pass}\nENV",
+      "cat <<ENV | sudo tee /etc/myapp/.env >/dev/null\nAPP_PORT=${var.app_port}\nAPP_DB_ENGINE=mysql\nAPP_DB_HOST=127.0.0.1\nAPP_DB_PORT=3306\nAPP_DB_NAME=${var.db_name}\nAPP_DB_USER=${var.db_user}\nAPP_DB_PASS=${var.db_pass}\nDATABASE_URL='mysql+pymysql://${var.db_user}:${var.db_pass}@127.0.0.1:8080/${var.db_name}?charset=utf8mb4'\nENV",
       "sudo chown -R csye6225:csye6225 /opt/myapp /etc/myapp",
       <<-SVC
       cat <<EOF | sudo tee /etc/systemd/system/${var.service_name}.service >/dev/null
