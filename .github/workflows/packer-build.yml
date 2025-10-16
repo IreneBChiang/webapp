@@ -6,30 +6,31 @@ on:
 jobs:
   build-ami:
     runs-on: ubuntu-24.04
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 若你 scripts/build.sh 有特別內容，也可保留這段
-      # 但這段會確保 out/artifact.zip 存在
+      # 建立 out/artifact.zip，確保 packer 有要打包的檔案
       - name: Build artifact.zip
         run: |
           pip install -r requirements.txt
           mkdir -p out
           zip -r out/artifact.zip app alembic requirements.txt start.sh
 
+      # 安裝 Packer CLI
       - name: Setup Packer
         uses: hashicorp/setup-packer@v3
 
-      # 關鍵：登入 AWS，指定 region
+      # 使用 Access Key 登入 AWS（DEV 帳號）
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ secrets.AWS_REGION }}
 
-
+      # 初始化並驗證 Packer 設定
       - name: Packer init/validate
         working-directory: packer
         run: |
@@ -41,6 +42,7 @@ jobs:
             -var "db_pass=${{ secrets.APP_DB_PASS }}" \
             mysql-ami.pkr.hcl
 
+      # 建立 AMI
       - name: Packer build
         working-directory: packer
         run: |
