@@ -1,8 +1,9 @@
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 # load the .env file
-load_dotenv()
+load_dotenv(Path("/etc/myapp/.env"))
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
