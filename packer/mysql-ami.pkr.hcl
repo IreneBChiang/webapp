@@ -39,10 +39,6 @@ variable "db_pass" {
   sensitive = true
 }
 
-variable "app_port" {
-  type = number
-}
-
 variable "app_db_engine" {
   type = string
   # e.g. "mysql"
