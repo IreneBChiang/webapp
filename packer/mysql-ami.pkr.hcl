@@ -46,7 +46,7 @@ variable "service_name" {
 
 # AMI 篩選參數（可改但不用硬寫 ID）
 variable "ubuntu_ami_name_pattern" {
-  type    = string
+  type = string
   # 放寬匹配，避免 Canonical 命名微調時抓不到
   default = "*ubuntu-noble-24.04-amd64-server-*"
 }
@@ -58,7 +58,7 @@ variable "ubuntu_owner" {
 source "amazon-ebs" "ubuntu2404" {
   region        = var.region
   ami_name      = "a05-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
-  instance_type = "t3.micro"         # x86_64 → 搭配 amd64 AMI
+  instance_type = "t3.micro" # x86_64 → 搭配 amd64 AMI
   ssh_username  = "ubuntu"
   ami_users     = [var.demo_account_id]
 
@@ -69,7 +69,7 @@ source "amazon-ebs" "ubuntu2404" {
       virtualization-type = "hvm"
       state               = "available"
       # 也可加上 architecture 強化匹配（可留可去）
-      architecture        = "x86_64"
+      architecture = "x86_64"
     }
     owners      = [var.ubuntu_owner]
     most_recent = true
