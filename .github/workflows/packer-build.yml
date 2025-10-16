@@ -50,5 +50,7 @@ jobs:
             -var "region=${{ secrets.AWS_REGION }}" \
             -var "demo_account_id=${{ secrets.DEMO_ACCOUNT_ID }}" \
             -var "app_artifact=${{ github.workspace }}/out/artifact.zip" \
+            -var "db_name=${{ secrets.DB_NAME }}" \
+            -var "db_user=${{ secrets.DB_USER }}" \
             -var "db_pass=${{ secrets.APP_DB_PASS }}" \
             mysql-ami.pkr.hcl

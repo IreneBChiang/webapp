@@ -26,12 +26,12 @@ variable "app_port" {
 
 variable "db_name" {
   type    = string
-  default = "assignment05"
+  # default = "assignment05"
 }
 
 variable "db_user" {
   type    = string
-  default = "app_user"
+  # default = "app_user"
 }
 
 variable "db_pass" {
@@ -123,7 +123,20 @@ build {
       "sudo chmod +x /opt/myapp/start.sh",
       "command -v dos2unix >/dev/null 2>&1 && sudo dos2unix /opt/myapp/start.sh || true",
       "cd /opt/myapp && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt",
-      "cat <<ENV | sudo tee /etc/myapp/.env >/dev/null\nAPP_PORT=${var.app_port}\nAPP_DB_ENGINE=mysql\nAPP_DB_HOST=127.0.0.1\nAPP_DB_PORT=3306\nAPP_DB_NAME=${var.db_name}\nAPP_DB_USER=${var.db_user}\nAPP_DB_PASS=${var.db_pass}\nENV",
+      # 插入新的生成 .env 檔案的 Heredoc 腳本 (包含 DATABASE_URL)
+      <<-EOT
+      sudo cat <<EOF | sudo tee /etc/myapp/.env >/dev/null
+APP_PORT=${var.app_port}
+APP_DB_ENGINE=mysql
+APP_DB_HOST=127.0.0.1
+APP_DB_PORT=3306
+APP_DB_NAME=${var.db_name}
+APP_DB_USER=${var.db_user}
+APP_DB_PASS=${var.db_pass}
+
+DATABASE_URL=mysql+pymysql://${var.db_user}:${var.db_pass}@127.0.0.1:3306/${var.db_name}?charset=utf8mb4
+EOT_END
+      EOT",
       "sudo chown -R csye6225:csye6225 /opt/myapp /etc/myapp",
       <<-SVC
       cat <<EOF | sudo tee /etc/systemd/system/${var.service_name}.service >/dev/null
