@@ -1,0 +1,34 @@
+name: packer-check
+on:
+  pull_request:
+    paths: [ 'packer/**', 'scripts/**', 'start.sh' ]
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-packer@v3
+
+      # check format : if modified -> fail
+      - name: packer fmt (and fail if it changed files)
+        working-directory: packer
+        run: |
+          packer fmt -recursive . && test -z "$(git status --porcelain)" || (git --no-pager diff && exit 1)
+
+      # initialize Packer plugin
+      - name: packer init
+        working-directory: packer
+        run: packer init .
+
+      # create dummy artifact for validate
+      - name: create dummy artifact for validate
+        working-directory: packer
+        run: |
+          mkdir -p out
+          touch out/artifact.zip
+
+      # fake file vars-example.pkrvars.hcl validate (no secrets)
+      - name: packer validate with example vars
+        working-directory: packer
+        run: packer validate -var-file=vars-example.pkrvars.hcl mysql-ami.pkr.hcl
