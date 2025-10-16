@@ -44,22 +44,41 @@ variable "service_name" {
   default = "myapp"
 }
 
+# AMI 篩選參數（可改但不用硬寫 ID）
+variable "ubuntu_ami_name_pattern" {
+  type    = string
+  # 放寬匹配，避免 Canonical 命名微調時抓不到
+  default = "*ubuntu-noble-24.04-amd64-server-*"
+}
+variable "ubuntu_owner" {
+  type    = string
+  default = "099720109477" # Canonical
+}
+
 source "amazon-ebs" "ubuntu2404" {
   region        = var.region
   ami_name      = "a05-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
-  instance_type = "t3.micro"
+  instance_type = "t3.micro"         # x86_64 → 搭配 amd64 AMI
   ssh_username  = "ubuntu"
   ami_users     = [var.demo_account_id]
+
   source_ami_filter {
     filters = {
-      name                = "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-amd64-server-*"
+      name                = var.ubuntu_ami_name_pattern
       root-device-type    = "ebs"
       virtualization-type = "hvm"
+      state               = "available"
+      # 也可加上 architecture 強化匹配（可留可去）
+      architecture        = "x86_64"
     }
-    owners      = ["099720109477"]
+    owners      = [var.ubuntu_owner]
     most_recent = true
   }
-  tags = { Project = "csye6225", Purpose = "A05" }
+
+  tags = {
+    Project = "csye6225"
+    Purpose = "A05"
+  }
 }
 
 build {
