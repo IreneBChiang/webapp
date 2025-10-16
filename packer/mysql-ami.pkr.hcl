@@ -86,7 +86,7 @@ build {
   sources = ["source.amazon-ebs.ubuntu2404"]
 
   provisioner "shell" {
-    inline_shebang   = "/usr/bin/env bash -euo pipefail"         # 加這行：用 bash
+    inline_shebang   = "/usr/bin/env bash -euo pipefail"  # 加這行：用 bash
     environment_vars = ["DEBIAN_FRONTEND=noninteractive"] # 避免 apt 卡互動
 
     inline = [
