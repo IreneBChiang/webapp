@@ -12,22 +12,23 @@ jobs:
     services:
       mysql:
         image: mysql:8
-        ports: [ "3306:3306" ]                 # services -> no ${{ }}
+        ports: [ "3306:3306" ]
         env:
           MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}
           MYSQL_DATABASE: ${{ secrets.DB_NAME }}
-        # check MySQL service health
+        # 健康檢查：容器內會有 $MYSQL_ROOT_PASSWORD
         options: >-
-          --health-cmd="mysqladmin ping -h localhost -p$MYSQL_ROOT_PASSWORD | grep 'mysqld is alive'"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -p$MYSQL_ROOT_PASSWORD | grep 'mysqld is alive'"
           --health-interval=5s --health-timeout=5s --health-retries=20
 
+    # 給後面步驟用的環境變數（host/port 固定用本機 MySQL）
     env:
-      DB_HOST: ${{ secrets.DB_HOST }}
-      DB_PORT: ${{ secrets.DB_PORT }}
-      DB_USER: ${{ secrets.DB_USER }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: ${{ secrets.DB_USER }}        # 你在 Secrets 設的應用程式帳號
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       DB_NAME: ${{ secrets.DB_NAME }}
-      DATABASE_URL: "mysql+pymysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}?charset=utf8mb4"
+      DATABASE_URL: mysql+pymysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@127.0.0.1:3306/${{ secrets.DB_NAME }}?charset=utf8mb4
       APP_PORT: 8080
 
     steps:
@@ -45,19 +46,25 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           sudo apt-get update && sudo apt-get install -y mysql-client curl
 
-      - name: Wait for DB
+      - name: Wait for DB ready
         run: |
           for i in {1..30}; do
-            mysqladmin ping -h ${DB_HOST:-127.0.0.1} -P ${DB_PORT} -u${DB_USER} -p"${DB_PASSWORD}" --silent && break
+            mysqladmin ping -h ${DB_HOST} -P ${DB_PORT} -uroot -p"${DB_PASSWORD}" --silent && break
             sleep 2
           done
+
+      # 關鍵：先用 root 建應用程式帳號並授權，之後 Alembic 才能用 DB_USER 連線
+      - name: Init DB user & grant privileges
+        run: |
+          mysql -h ${DB_HOST} -P ${DB_PORT} -uroot -p"${DB_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+          mysql -h ${DB_HOST} -P ${DB_PORT} -uroot -p"${DB_PASSWORD}" -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';"
+          mysql -h ${DB_HOST} -P ${DB_PORT} -uroot -p"${DB_PASSWORD}" -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%'; FLUSH PRIVILEGES;"
 
       - name: Run Alembic migrations
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
-        run: alembic upgrade head
+        run: alembic -c alembic.ini upgrade head
 
-      # run API server
       - name: Start API server (background)
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
@@ -76,7 +83,10 @@ jobs:
             fi
             sleep 2
           done
-          echo "API not ready in time"; echo "---- tail server.log ----"; tail -n 200 server.log; exit 1
+          echo "API not ready in time"
+          echo "---- tail server.log ----"
+          tail -n 200 server.log
+          exit 1
 
       - name: Run pytest with JUnit report
         env:
