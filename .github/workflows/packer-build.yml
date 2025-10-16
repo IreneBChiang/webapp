@@ -16,7 +16,7 @@ jobs:
         run: |
           pip install -r requirements.txt
           mkdir -p out
-          zip -r out/artifact.zip app alembic requirements.txt start.sh
+          zip -r out/artifact.zip app alembic alembic.ini requirements.txt start.sh
 
       # 安裝 Packer CLI
       - name: Setup Packer
