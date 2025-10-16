@@ -113,6 +113,7 @@ build {
     inline = [
       "sudo mkdir -p /opt/myapp /etc/myapp",
       "sudo unzip -o /tmp/artifact.zip -d /opt/myapp",
+      "sudo chown -R ubuntu:ubuntu /opt/myapp",
       "cd /opt/myapp && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt",
       "cat <<ENV | sudo tee /etc/myapp/.env >/dev/null\nAPP_PORT=${var.app_port}\nAPP_DB_ENGINE=mysql\nAPP_DB_HOST=127.0.0.1\nAPP_DB_PORT=3306\nAPP_DB_NAME=${var.db_name}\nAPP_DB_USER=${var.db_user}\nAPP_DB_PASS=${var.db_pass}\nENV",
       "sudo chown -R csye6225:csye6225 /opt/myapp /etc/myapp",
