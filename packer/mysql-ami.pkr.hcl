@@ -79,7 +79,7 @@ build {
 
   # ---- 基礎與 MySQL 安裝／初始化 ----
   provisioner "shell" {
-    inline_shebang  = "/bin/bash -euxo pipefail"
+    inline_shebang = "/bin/bash -euxo pipefail"
     # 讓 packer 先 chmod +x，再直接把檔案當可執行檔跑；避免用 -c 字串
     execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E {{ .Path }}"
 
