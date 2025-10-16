@@ -16,19 +16,25 @@ jobs:
         run: |
           packer fmt -recursive . && test -z "$(git status --porcelain)" || (git --no-pager diff && exit 1)
 
+      # 產生假的 artifact.zip，讓 validate 不報錯
+      - name: Create dummy artifact for validate
+        run: |
+          mkdir -p out
+          echo "placeholder" > out/placeholder.txt
+          zip -q -j out/artifact.zip out/placeholder.txt
+
       # initialize Packer plugin
       - name: packer init
         working-directory: packer
         run: packer init .
 
-      # create dummy artifact for validate
-      - name: create dummy artifact for validate
+      # 用假變數 validate（不用 secrets）
+      - name: packer validate (no secrets)
         working-directory: packer
         run: |
-          mkdir -p out
-          touch out/artifact.zip
-
-      # fake file vars-example.pkrvars.hcl validate (no secrets)
-      - name: packer validate with example vars
-        working-directory: packer
-        run: packer validate -var-file=vars-example.pkrvars.hcl mysql-ami.pkr.hcl
+          packer validate \
+            -var "region=us-east-1" \
+            -var "demo_account_id=111111111111" \
+            -var "app_artifact=${{ github.workspace }}/out/artifact.zip" \
+            -var "db_pass=example-password" \
+            mysql-ami.pkr.hcl
