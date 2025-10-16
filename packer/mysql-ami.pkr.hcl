@@ -159,7 +159,6 @@ build {
 
     "sudo systemctl daemon-reload",
     "sudo systemctl enable ${var.service_name}"
-  ]
-}
-
+    ]    
+  }
 }
