@@ -26,7 +26,7 @@ variable "app_port" {
 
 variable "db_name" {
   type    = string
-  default = "assignment02db"
+  default = "assignment05"
 }
 
 variable "db_user" {
