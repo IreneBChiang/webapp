@@ -79,8 +79,9 @@ build {
 
   # ---- 基礎與 MySQL 安裝／初始化 ----
   provisioner "shell" {
-    inline_shebang  = "/bin/bash -euxo pipefail"
-    execute_command = "sudo -E /bin/bash -c '{{ .Vars }} {{ .Path }}'"
+    inline_shebang = "/bin/bash -euxo pipefail"
+    # 讓 packer 先 chmod +x，再直接把檔案當可執行檔跑；避免用 -c 字串
+    execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E {{ .Path }}"
 
     inline = [
       # 基本環境
@@ -107,7 +108,7 @@ build {
   # 佈署 App 與 systemd service
   provisioner "shell" {
     inline_shebang  = "/bin/bash -euxo pipefail"
-    execute_command = "sudo -E /bin/bash -c '{{ .Vars }} {{ .Path }}'"
+    execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E {{ .Path }}"
 
     inline = [
       # 展開、建 venv、安裝套件
