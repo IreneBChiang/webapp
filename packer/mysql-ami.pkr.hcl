@@ -25,16 +25,40 @@ variable "app_port" {
 }
 
 variable "db_name" {
-  type    = string
+  type = string
   # default = "assignment05"
 }
 
 variable "db_user" {
-  type    = string
+  type = string
   # default = "app_user"
 }
 
 variable "db_pass" {
+  type      = string
+  sensitive = true
+}
+
+variable "app_port" {
+  type = number
+}
+
+variable "app_db_engine" {
+  type = string
+  # e.g. "mysql"
+}
+
+variable "app_db_host" {
+  type = string
+  # e.g. "127.0.0.1"
+}
+
+variable "app_db_port" {
+  type = number
+  # e.g. 3306
+}
+
+variable "database_url" {
   type      = string
   sensitive = true
 }
@@ -113,7 +137,7 @@ build {
   }
 
   provisioner "shell" {
-    inline_shebang   = "/usr/bin/env bash" # 也用 bash
+    inline_shebang   = "/usr/bin/env bash"
     environment_vars = ["DEBIAN_FRONTEND=noninteractive"]
 
     inline = [
@@ -122,39 +146,44 @@ build {
       "sudo chown -R ubuntu:ubuntu /opt/myapp",
       "sudo chmod +x /opt/myapp/start.sh",
       "command -v dos2unix >/dev/null 2>&1 && sudo dos2unix /opt/myapp/start.sh || true",
-      "cd /opt/myapp && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt",
-      # 插入新的生成 .env 檔案的 Heredoc 腳本 (包含 DATABASE_URL)
-      <<-EOT
-      sudo cat <<EOF | sudo tee /etc/myapp/.env >/dev/null
-APP_PORT=${var.app_port}
-APP_DB_ENGINE=mysql
-APP_DB_HOST=127.0.0.1
-APP_DB_PORT=3306
-APP_DB_NAME=${var.db_name}
-APP_DB_USER=${var.db_user}
-APP_DB_PASS=${var.db_pass}
+      "bash -lc 'cd /opt/myapp && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt'",
 
-DATABASE_URL=mysql+pymysql://${var.db_user}:${var.db_pass}@127.0.0.1:3306/${var.db_name}?charset=utf8mb4
-EOT_END
-      EOT",
+      # 用 Packer 變數（由 GitHub Secrets 注入）生成 .env
+      <<-WRITE_ENV
+      sudo tee /etc/myapp/.env >/dev/null <<'EOF'
+  APP_PORT=${var.app_port}
+  APP_DB_ENGINE=${var.app_db_engine}      # 例如 mysql
+  APP_DB_HOST=${var.app_db_host}          # 例如 127.0.0.1
+  APP_DB_PORT=${var.app_db_port}          # 例如 3306
+  APP_DB_NAME=${var.db_name}
+  APP_DB_USER=${var.db_user}
+  APP_DB_PASS=${var.db_pass}
+  DATABASE_URL=${var.database_url}
+  EOF
+      WRITE_ENV
+      ,
+
       "sudo chown -R csye6225:csye6225 /opt/myapp /etc/myapp",
+
       <<-SVC
-      cat <<EOF | sudo tee /etc/systemd/system/${var.service_name}.service >/dev/null
-      [Unit]
-      Description=FastAPI App
-      After=network.target mysql.service
-      Requires=mysql.service
-      [Service]
-      User=csye6225
-      Group=csye6225
-      EnvironmentFile=/etc/myapp/.env
-      WorkingDirectory=/opt/myapp
-      ExecStart=/bin/bash -lc \"/opt/myapp/start.sh\"
-      Restart=on-failure
-      RestartSec=5
-      [Install]
-      WantedBy=multi-user.target
-      EOF
+      sudo tee /etc/systemd/system/${var.service_name}.service >/dev/null <<'EOF'
+  [Unit]
+  Description=FastAPI App
+  After=network.target mysql.service
+  Requires=mysql.service
+
+  [Service]
+  User=csye6225
+  Group=csye6225
+  EnvironmentFile=/etc/myapp/.env
+  WorkingDirectory=/opt/myapp
+  ExecStart=/bin/bash -lc "/opt/myapp/start.sh"
+  Restart=on-failure
+  RestartSec=5
+
+  [Install]
+  WantedBy=multi-user.target
+  EOF
       SVC
       ,
       "sudo systemctl daemon-reload",
