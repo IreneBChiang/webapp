@@ -44,15 +44,21 @@ variable "service_name" {
   default = "myapp"
 }
 
+# AMI 篩選參數（可改但不用硬寫 ID）
 variable "ubuntu_ami_name_pattern" {
-  type    = string
+  type = string
+  # 放寬匹配，避免 Canonical 命名微調時抓不到
   default = "*ubuntu-noble-24.04-amd64-server-*"
+}
+variable "ubuntu_owner" {
+  type    = string
+  default = "099720109477" # Canonical
 }
 
 source "amazon-ebs" "ubuntu2404" {
   region        = var.region
   ami_name      = "a05-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
-  instance_type = "t3.micro"
+  instance_type = "t3.micro" # x86_64 → 搭配 amd64 AMI
   ssh_username  = "ubuntu"
   ami_users     = [var.demo_account_id]
 
@@ -62,8 +68,10 @@ source "amazon-ebs" "ubuntu2404" {
       root-device-type    = "ebs"
       virtualization-type = "hvm"
       state               = "available"
+      # 也可加上 architecture 強化匹配（可留可去）
+      architecture = "x86_64"
     }
-    owners      = ["099720109477"] # Canonical
+    owners      = [var.ubuntu_owner]
     most_recent = true
   }
 
@@ -77,59 +85,67 @@ build {
   name    = "mysql-fastapi-ami"
   sources = ["source.amazon-ebs.ubuntu2404"]
 
-  # ---- 基礎與 MySQL 安裝／初始化 ----
   provisioner "shell" {
-    inline_shebang = "/bin/bash -euxo pipefail"
-    # 讓 packer 先 chmod +x，再直接把檔案當可執行檔跑；避免用 -c 字串
-    execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E {{ .Path }}"
+    inline_shebang   = "/bin/bash -euxo pipefail"         # 加這行：用 bash
+    environment_vars = ["DEBIAN_FRONTEND=noninteractive"] # 避免 apt 卡互動
 
     inline = [
-      # 基本環境
-      "apt-get update -y",
-      "DEBIAN_FRONTEND=noninteractive apt-get install -y apt-utils unzip python3 python3-venv mysql-server",
-      "groupadd -f csye6225 || true",
-      "id -u csye6225 >/dev/null 2>&1 || useradd -g csye6225 -s /usr/sbin/nologin -m -d /opt/csye6225 csye6225",
-
-      # MySQL 設定：只綁 127.0.0.1
-      "printf '[mysqld]\\nbind-address=127.0.0.1\\n' > /etc/mysql/mysql.conf.d/zzz-bindonly.cnf",
-      "systemctl enable --now mysql",
-
-      # 初始化 DB / 使用者（用 -e 一次性執行，避免 heredoc 造成 GA/bash 語法誤判）
-      "mysql -uroot -e \"CREATE DATABASE IF NOT EXISTS ${var.db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER IF NOT EXISTS '${var.db_user}'@'localhost' IDENTIFIED BY '${var.db_pass}'; GRANT ALL PRIVILEGES ON ${var.db_name}.* TO '${var.db_user}'@'localhost'; FLUSH PRIVILEGES;\""
+      "sudo groupadd -f csye6225 || true",
+      "id -u csye6225 >/dev/null 2>&1 || sudo useradd -g csye6225 -s /usr/sbin/nologin -m -d /opt/csye6225 csye6225",
+      "sudo apt-get update -y",
+      "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y unzip python3 python3-venv mysql-server",
+      "echo '[mysqld]\nbind-address=127.0.0.1' | sudo tee /etc/mysql/mysql.conf.d/zzz-bindonly.cnf",
+      "sudo systemctl enable --now mysql",
+      <<-EOT
+      sudo mysql -uroot <<SQL
+      CREATE DATABASE IF NOT EXISTS ${var.db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE USER IF NOT EXISTS '${var.db_user}'@'localhost' IDENTIFIED BY '${var.db_pass}';
+      GRANT ALL PRIVILEGES ON ${var.db_name}.* TO '${var.db_user}'@'localhost';
+      FLUSH PRIVILEGES;
+      SQL
+      EOT
     ]
   }
 
-  # 傳入打包好的應用程式 zip
   provisioner "file" {
     source      = var.app_artifact
     destination = "/tmp/artifact.zip"
   }
 
-  # 佈署 App 與 systemd service
   provisioner "shell" {
-    inline_shebang  = "/bin/bash -euxo pipefail"
-    execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E {{ .Path }}"
+    inline_shebang   = "/bin/bash -euxo pipefail" # 也用 bash
+    environment_vars = ["DEBIAN_FRONTEND=noninteractive"]
 
     inline = [
-      # 展開、建 venv、安裝套件
-      "mkdir -p /opt/myapp /etc/myapp",
-      "unzip -o /tmp/artifact.zip -d /opt/myapp",
-      "chown -R ubuntu:ubuntu /opt/myapp || true",
-      "chmod +x /opt/myapp/start.sh || true",
-      "bash -lc 'cd /opt/myapp && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt'",
-
-      # .env（用 printf 輸出，避免 heredoc 轉義問題）
-      "bash -lc 'printf \"APP_PORT=%s\\nAPP_DB_ENGINE=mysql\\nAPP_DB_HOST=127.0.0.1\\nAPP_DB_PORT=3306\\nAPP_DB_NAME=%s\\nAPP_DB_USER=%s\\nAPP_DB_PASS=%s\\n\" ${var.app_port} ${var.db_name} ${var.db_user} ${var.db_pass} | tee /etc/myapp/.env >/dev/null'",
-
-      # 權限給執行用戶
-      "chown -R csye6225:csye6225 /opt/myapp /etc/myapp",
-
-      # systemd unit（在單行 bash -lc 內用 heredoc，避免 HCL/YAML 解析干擾）
-      "bash -lc 'cat >/etc/systemd/system/${var.service_name}.service <<\"EOF\"\n[Unit]\nDescription=FastAPI App\nAfter=network.target mysql.service\nRequires=mysql.service\n\n[Service]\nUser=csye6225\nGroup=csye6225\nEnvironmentFile=/etc/myapp/.env\nWorkingDirectory=/opt/myapp\nExecStart=/bin/bash -lc \"/opt/myapp/start.sh\"\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\nEOF'",
-
-      # 重新載入並開機自動啟動（AMI 啟用時才會真正啟動）
-      "systemctl daemon-reload",
-      "systemctl enable ${var.service_name}"
+      "sudo mkdir -p /opt/myapp /etc/myapp",
+      "sudo unzip -o /tmp/artifact.zip -d /opt/myapp",
+      "sudo chown -R ubuntu:ubuntu /opt/myapp",
+      "sudo chmod +x /opt/myapp/start.sh",
+      "command -v dos2unix >/dev/null 2>&1 && sudo dos2unix /opt/myapp/start.sh || true",
+      "cd /opt/myapp && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt",
+      "cat <<ENV | sudo tee /etc/myapp/.env >/dev/null\nAPP_PORT=${var.app_port}\nAPP_DB_ENGINE=mysql\nAPP_DB_HOST=127.0.0.1\nAPP_DB_PORT=3306\nAPP_DB_NAME=${var.db_name}\nAPP_DB_USER=${var.db_user}\nAPP_DB_PASS=${var.db_pass}\nENV",
+      "sudo chown -R csye6225:csye6225 /opt/myapp /etc/myapp",
+      <<-SVC
+      cat <<EOF | sudo tee /etc/systemd/system/${var.service_name}.service >/dev/null
+      [Unit]
+      Description=FastAPI App
+      After=network.target mysql.service
+      Requires=mysql.service
+      [Service]
+      User=csye6225
+      Group=csye6225
+      EnvironmentFile=/etc/myapp/.env
+      WorkingDirectory=/opt/myapp
+      ExecStart=/bin/bash -lc \"/opt/myapp/start.sh\"
+      Restart=on-failure
+      RestartSec=5
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      SVC
+      ,
+      "sudo systemctl daemon-reload",
+      "sudo systemctl enable ${var.service_name}"
     ]
   }
 }
