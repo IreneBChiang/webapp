@@ -1,22 +1,45 @@
 name: packer-build
-on: { push: { branches: [ main ] } }
+on:
+  push:
+    branches: [ main ]
+
 jobs:
   build-ami:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - name: Build artifact
-        run: chmod +x scripts/build.sh && scripts/build.sh
-      - uses: hashicorp/setup-packer@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 若你 scripts/build.sh 有特別內容，也可保留這段
+      # 但這段會確保 out/artifact.zip 存在
+      - name: Build artifact.zip
+        run: |
+          pip install -r requirements.txt
+          mkdir -p out
+          zip -r out/artifact.zip app alembic requirements.txt start.sh
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@v3
+
+      # 關鍵：登入 AWS，指定 region
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ secrets.AWS_REGION }}
+
       - name: Packer init/validate
         working-directory: packer
-        run: packer init . && packer validate .
+        run: |
+          packer init .
+          packer validate \
+            -var "region=${{ secrets.AWS_REGION }}" \
+            -var "demo_account_id=${{ secrets.DEMO_ACCOUNT_ID }}" \
+            -var "app_artifact=${{ github.workspace }}/out/artifact.zip" \
+            -var "db_pass=${{ secrets.APP_DB_PASS }}" \
+            mysql-ami.pkr.hcl
+
       - name: Packer build
         working-directory: packer
         run: |
