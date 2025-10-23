@@ -48,7 +48,7 @@ variable "service_name" {
 variable "ubuntu_ami_name_pattern" {
   type = string
   # 放寬匹配，避免 Canonical 命名微調時抓不到
-  default = "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-amd64-server-*"
+  default = "*ubuntu-noble-24.04-amd64-server-*"
 }
 variable "ubuntu_owner" {
   type    = string
