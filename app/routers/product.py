@@ -155,10 +155,8 @@ async def upload_image(
 def list_images(
     productId: int = Path(..., ge=1),
     db: Session = Depends(get_db),
-    me: User = Depends(get_current_user),
 ):
     p = db.get(Product, productId)
-    _owner_guard(p, me)
 
     if not S3_BUCKET_NAME:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -172,10 +170,8 @@ def get_image(
     productId: int = Path(..., ge=1),
     imageId: int = Path(..., ge=1),
     db: Session = Depends(get_db),
-    me: User = Depends(get_current_user),
 ):
     p = db.get(Product, productId)
-    _owner_guard(p, me)
 
     if not S3_BUCKET_NAME:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
