@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, func, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, func, UniqueConstraint, BigInteger
 from sqlalchemy.orm import validates
 from email_validator import validate_email, EmailNotValidError
 from datetime import datetime, timezone
@@ -11,7 +11,7 @@ def utcnow():
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     email = Column(String(320), nullable=False, unique=True, index=True)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
