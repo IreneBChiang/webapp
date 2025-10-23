@@ -24,16 +24,6 @@ variable "app_port" {
   default = 8080
 }
 
-variable "db_name" {
-  type    = string
-  default = "assignment05"
-}
-
-variable "db_user" {
-  type    = string
-  default = "app_user"
-}
-
 variable "db_pass" {
   type      = string
   sensitive = true
@@ -48,7 +38,7 @@ variable "service_name" {
 variable "ubuntu_ami_name_pattern" {
   type = string
   # 放寬匹配，避免 Canonical 命名微調時抓不到
-  default = "*ubuntu-noble-24.04-amd64-server-*"
+  default = "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-amd64-server-*"
 }
 variable "ubuntu_owner" {
   type    = string
