@@ -24,6 +24,11 @@ variable "app_port" {
   default = 8080
 }
 
+variable "db_pass" {
+  type      = string
+  sensitive = true
+}
+
 variable "service_name" {
   type    = string
   default = "myapp"
