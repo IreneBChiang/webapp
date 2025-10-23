@@ -12,7 +12,7 @@ def utcnow():
 class Product(Base):
     __tablename__ = "products"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     name = Column(String(200), nullable=False)
     description = Column(String(2000), nullable=True)
     sku = Column(String(100), nullable=False)
