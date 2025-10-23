@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, func, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, func, UniqueConstraint, BigInteger
 from sqlalchemy.orm import validates
 from email_validator import validate_email, EmailNotValidError
 from datetime import datetime, timezone
