@@ -77,12 +77,12 @@ source "amazon-ebs" "ubuntu2404" {
 
   tags = {
     Project = "csye6225"
-    Purpose = "A05"
+    Purpose = "A06"
   }
 }
 
 build {
-  name    = "mysql-fastapi-ami"
+  name    = "fastapi-rds-s3-ami"
   sources = ["source.amazon-ebs.ubuntu2404"]
 
   provisioner "shell" {
@@ -93,17 +93,7 @@ build {
       "sudo groupadd -f csye6225 || true",
       "id -u csye6225 >/dev/null 2>&1 || sudo useradd -g csye6225 -s /usr/sbin/nologin -m -d /opt/csye6225 csye6225",
       "sudo apt-get update -y",
-      "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y unzip python3 python3-venv mysql-server",
-      "echo '[mysqld]\nbind-address=127.0.0.1' | sudo tee /etc/mysql/mysql.conf.d/zzz-bindonly.cnf",
-      "sudo systemctl enable --now mysql",
-      <<-EOT
-      sudo mysql -uroot <<SQL
-      CREATE DATABASE IF NOT EXISTS ${var.db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-      CREATE USER IF NOT EXISTS '${var.db_user}'@'localhost' IDENTIFIED BY '${var.db_pass}';
-      GRANT ALL PRIVILEGES ON ${var.db_name}.* TO '${var.db_user}'@'localhost';
-      FLUSH PRIVILEGES;
-      SQL
-      EOT
+      "sudo apt-get install -y unzip python3 python3-venv python3-pip",
     ]
   }
 
@@ -119,18 +109,20 @@ build {
     inline = [
       "sudo mkdir -p /opt/myapp /etc/myapp",
       "sudo unzip -o /tmp/artifact.zip -d /opt/myapp",
-      "sudo chown -R ubuntu:ubuntu /opt/myapp",
+      "sudo chown -R csye6225:csye6225 /opt/myapp",
       "sudo chmod +x /opt/myapp/start.sh",
       "command -v dos2unix >/dev/null 2>&1 && sudo dos2unix /opt/myapp/start.sh || true",
       "cd /opt/myapp && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt",
-      "cat <<ENV | sudo tee /etc/myapp/.env >/dev/null\nAPP_PORT=${var.app_port}\nAPP_DB_ENGINE=mysql\nAPP_DB_HOST=127.0.0.1\nAPP_DB_PORT=3306\nAPP_DB_NAME=${var.db_name}\nAPP_DB_USER=${var.db_user}\nAPP_DB_PASS=${var.db_pass}\nDATABASE_URL='mysql+pymysql://${var.db_user}:${var.db_pass}@127.0.0.1:3306/${var.db_name}?charset=utf8mb4'\nENV",
-      "sudo chown -R csye6225:csye6225 /opt/myapp /etc/myapp",
+      "cat <<ENV | sudo tee /etc/myapp/.env >/dev/null\nAPP_PORT=${var.app_port}\n# DATABASE_URL & S3_BUCKET_NAME will be injected by Terraform user_data on boot\nENV",
+
+      "sudo chown -R csye6225:csye6225 /etc/myapp",
+
       <<-SVC
       cat <<EOF | sudo tee /etc/systemd/system/${var.service_name}.service >/dev/null
       [Unit]
       Description=FastAPI App
-      After=network.target mysql.service
-      Requires=mysql.service
+      After=network-online.target
+      Wants=network-online.target
       [Service]
       User=csye6225
       Group=csye6225
