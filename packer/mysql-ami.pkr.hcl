@@ -93,7 +93,7 @@ build {
       "sudo groupadd -f csye6225 || true",
       "id -u csye6225 >/dev/null 2>&1 || sudo useradd -g csye6225 -s /usr/sbin/nologin -m -d /opt/csye6225 csye6225",
       "sudo apt-get update -y",
-      "sudo apt-get install -y unzip python3 python3-venv python3-pip",
+      "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y unzip python3 python3-venv mysql-server",
     ]
   }
 
