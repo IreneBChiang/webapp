@@ -14,6 +14,8 @@ from app.core.s3 import ALLOWED_CONTENT_TYPES, make_key, put_bytes, delete_objec
 from app.models.image import Image
 from app.schemas.image import ImageOut
 from starlette.concurrency import run_in_threadpool
+from app.core.config import S3_BUCKET_NAME
+from fastapi import HTTPException, status
 
 router = APIRouter(prefix="/v1/product", tags=["product"])
 
@@ -125,6 +127,10 @@ async def upload_image(
     p = db.get(Product, productId)
     _owner_guard(p, me)
 
+    if not S3_BUCKET_NAME:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Storage not configured")
+
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported file type")
 
@@ -154,6 +160,10 @@ def list_images(
     p = db.get(Product, productId)
     _owner_guard(p, me)
 
+    if not S3_BUCKET_NAME:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Storage not configured")
+
     return db.query(Image).filter(Image.product_id == productId).order_by(Image.image_id).all()
 
 # 取得單一圖片
@@ -166,6 +176,10 @@ def get_image(
 ):
     p = db.get(Product, productId)
     _owner_guard(p, me)
+
+    if not S3_BUCKET_NAME:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Storage not configured")
 
     img = db.query(Image).filter(Image.product_id == productId, Image.image_id == imageId).first()
     if not img:
@@ -182,6 +196,10 @@ def delete_image(
 ):
     p = db.get(Product, productId)
     _owner_guard(p, me)
+
+    if not S3_BUCKET_NAME:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Storage not configured")
 
     img = (
         db.query(Image)
