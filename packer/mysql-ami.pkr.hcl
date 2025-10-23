@@ -114,7 +114,7 @@ build {
     inline = [
       "sudo mkdir -p /opt/myapp /etc/myapp",
       "sudo unzip -o /tmp/artifact.zip -d /opt/myapp",
-      "sudo chown -R csye6225:csye6225 /opt/myapp",
+      "sudo chown -R ubuntu:ubuntu /opt/myapp",
       "sudo chmod +x /opt/myapp/start.sh",
       "command -v dos2unix >/dev/null 2>&1 && sudo dos2unix /opt/myapp/start.sh || true",
       "cd /opt/myapp && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt",
