@@ -24,6 +24,16 @@ variable "app_port" {
   default = 8080
 }
 
+variable "db_name" {
+  type    = string
+  default = "assignment05"
+}
+
+variable "db_user" {
+  type    = string
+  default = "app_user"
+}
+
 variable "db_pass" {
   type      = string
   sensitive = true
