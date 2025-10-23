@@ -90,10 +90,15 @@ build {
     environment_vars = ["DEBIAN_FRONTEND=noninteractive"] # 避免 apt 卡互動
 
     inline = [
+      "sudo cloud-init status --wait || true",
+      "sudo bash -c 'while fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do echo waiting apt lists lock; sleep 5; done'",
+      "sudo bash -c 'while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do echo waiting dpkg lock; sleep 5; done'",
+      "sudo bash -c 'while fuser /var/lib/apt/daily_lock >/dev/null 2>&1; do echo waiting apt daily; sleep 5; done' || true",
+      "sudo apt-get update -y -o Acquire::Retries=5",
+      "sudo apt-get install -y unzip python3-venv python3-pip",
+
       "sudo groupadd -f csye6225 || true",
       "id -u csye6225 >/dev/null 2>&1 || sudo useradd -g csye6225 -s /usr/sbin/nologin -m -d /opt/csye6225 csye6225",
-      "sudo apt-get update -y",
-      "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y unzip python3 python3-venv mysql-server",
     ]
   }
 
