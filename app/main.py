@@ -15,13 +15,30 @@ from app.models.user import User
 from app.models.product import Product
 from app.routers.user import router as user_router
 from app.routers.product import router as product_router
+import logging, os
 
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S%z"
+)
+
+logger = logging.getLogger("webapp")
 app = FastAPI()
 
 @app.on_event("startup")
 def auto_migrate():
     cfg = alembicConfig("alembic.ini")   # get alembic.ini
     command.upgrade(cfg, "head")   # auto run: alembic upgrade head
+    logger.info("app started")
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info("request %s %s", request.method, request.url.path)
+    resp = await call_next(request)
+    logger.info("response %s %s %s", request.method, request.url.path, resp.status_code)
+    return resp
 
 # make sure that /healthz not be cache
 NO_CACHE = {

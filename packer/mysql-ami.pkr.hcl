@@ -134,6 +134,8 @@ build {
       EnvironmentFile=/etc/myapp/.env
       WorkingDirectory=/opt/myapp
       ExecStart=/bin/bash -lc \"/opt/myapp/start.sh\"
+      StandardOutput=append:/var/log/webapp/app.log
+      StandardError=append:/var/log/webapp/app.log
       Restart=on-failure
       RestartSec=5
       [Install]
