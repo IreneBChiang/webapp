@@ -54,6 +54,13 @@ async def log_requests(request: Request, call_next):
         stats.timing(f"{key}.duration_ms", int((perf_counter()-t0)*1000))  # 新增：即便錯也記耗時
         raise
     stats.timing(f"{key}.duration_ms", int((perf_counter()-t0)*1000))      # 新增：API 耗時(ms)
+    # status = response.status_code
+    # if   status >= 500:
+    #     log.error("RESPONSE %s %s %s %dms", request.method, request.url.path, status, dur)
+    # elif status >= 400:
+    #     log.warning("RESPONSE %s %s %s %dms", request.method, request.url.path, status, dur)
+    # else:
+    #     log.info("RESPONSE %s %s %s %dms", request.method, request.url.path, status, dur)
     return response
 
 # make sure that /healthz not be cache
