@@ -18,7 +18,7 @@ from app.core.config import S3_BUCKET_NAME
 from fastapi import HTTPException, status
 import logging
 from time import perf_counter
-from app.main import stats
+from app.telemetry.metrics import stats
 
 log = logging.getLogger("product")
 router = APIRouter(prefix="/v1/product", tags=["product"])
@@ -83,7 +83,7 @@ def put_product(
 
     try:
         db.commit()
-    except (IntegrityError, OperationalError):
+    except (IntegrityError, OperationalError) as e:
         db.rollback()
         log.error("PUT /v1/product/%s - DB validation error: %s", productId, e)
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -109,7 +109,7 @@ def patch_product(
 
     try:
         db.commit()
-    except (IntegrityError, OperationalError):
+    except (IntegrityError, OperationalError) as e:
         db.rollback()
         log.error("PATCH /v1/product/%s - DB validation error: %s", productId, e)
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
