@@ -108,7 +108,7 @@ async def healthz(req: Request):
         return Response(status_code=HTTP_200_OK, headers=NO_CACHE)
     except Exception:
         db.rollback()
-        log.error("GET /healthz - DB insert failed: %s", e)
+        log.error("GET /healthz - DB insert failed: %s", exc_info=True)
         return Response(status_code=HTTP_503_SERVICE_UNAVAILABLE, headers=NO_CACHE)
     finally:
         db.close()
