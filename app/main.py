@@ -21,11 +21,12 @@ from app.middleware.error_logging import unhandled_exception_handler
 # from app.routers.health import router as health_router
 from statsd import StatsClient
 from time import perf_counter
+import logging
 stats = StatsClient(host="127.0.0.1", port=8125, prefix="api")
 
-configure_logging()  # 讓所有 logger 都用 JSON 格式dk
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-logging.getLogger().setLevel(LOG_LEVEL)
+# configure_logging()  # 讓所有 logger 都用 JSON 格式dk
+# LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+# logging.getLogger().setLevel(LOG_LEVEL)
 log = logging.getLogger("webapp")
 
 app = FastAPI()
@@ -37,7 +38,7 @@ app.add_exception_handler(Exception, unhandled_exception_handler)
 def auto_migrate():
     cfg = alembicConfig("alembic.ini")   # get alembic.ini
     command.upgrade(cfg, "head")   # auto run: alembic upgrade head
-    logger.info("app started")
+    # logger.info("app started")
     log.info("Application started and database migrated successfully")
 
 @app.middleware("http")
