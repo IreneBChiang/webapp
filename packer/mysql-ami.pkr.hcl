@@ -154,12 +154,12 @@ build {
     environment_vars = ["DEBIAN_FRONTEND=noninteractive"]
 
     inline = [
-      # 安裝 CloudWatch Agent（Ubuntu）
+      # 安裝 CloudWatch Agent (Ubuntu)
       "sudo apt-get update -y -o Acquire::Retries=5",
-      "if ! command -v amazon-cloudwatch-agent >/dev/null 2>&1; then " 
-        # 官方 deb（amd64）
-        "wget -q https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb && " 
-        "sudo apt-get install -y ./amazon-cloudwatch-agent.deb; "
+      "if ! command -v amazon-cloudwatch-agent >/dev/null 2>&1; then ",
+      # 官方 deb (amd64)
+      "wget -q https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb &&",
+      "sudo apt-get install -y ./amazon-cloudwatch-agent.deb;",
       "fi",
 
       # （可選）先把 nginx 套件裝好，但不下發站台設定；站台設定交給 userdata 用 ${app_port} 產生
