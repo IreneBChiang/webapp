@@ -33,10 +33,10 @@ logging.basicConfig(
 
 log = logging.getLogger("webapp")
 log.setLevel(LOG_LEVEL)
-log.propagate = False
+# log.propagate = False
 # 若環境/uvicorn 沒替你掛 handler，補一個到 stdout（systemd 會把 stdout 寫到 /var/log/webapp/app.log）
-if not log.handlers:
-    log.addHandler(logging.StreamHandler())
+# if not log.handlers:
+#     log.addHandler(logging.StreamHandler())
 
 app = FastAPI()
 
