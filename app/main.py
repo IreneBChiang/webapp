@@ -50,7 +50,7 @@ async def log_requests(request: Request, call_next):
     t0 = perf_counter()
     try:
         response = await call_next(request)
-    except Exception:
+    except Exception as e:
         stats.timing(f"{key}.duration_ms", int((perf_counter()-t0)*1000))  # 新增：即便錯也記耗時
         raise
     stats.timing(f"{key}.duration_ms", int((perf_counter()-t0)*1000))      # 新增：API 耗時(ms)
