@@ -20,7 +20,7 @@ import logging
 from time import perf_counter
 from app.telemetry.metrics import stats
 
-log = logging.getLogger("product")
+log = logging.getLogger("webapp.product")
 router = APIRouter(prefix="/v1/product", tags=["product"])
 
 # check exists, check owner

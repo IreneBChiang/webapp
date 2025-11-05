@@ -7,7 +7,7 @@ from app.schemas.user import UserCreate, UserOut
 import logging
 
 # 建立 logger
-log = logging.getLogger("user")
+log = logging.getLogger("webapp.user")
 router = APIRouter(prefix="/v1/user", tags=["user"])
 
 # create data
