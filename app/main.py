@@ -18,7 +18,7 @@ from app.routers.product import router as product_router
 import logging, os
 from app.core.logging_config import configure_logging
 from app.middleware.error_logging import unhandled_exception_handler
-from app.routers.health import router as health_router
+# from app.routers.health import router as health_router
 from statsd import StatsClient
 from time import perf_counter
 stats = StatsClient(host="127.0.0.1", port=8125, prefix="api")
