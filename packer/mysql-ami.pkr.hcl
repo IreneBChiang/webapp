@@ -147,4 +147,36 @@ build {
       "sudo systemctl enable ${var.service_name}"
     ]
   }
+
+  # 安裝 CloudWatch Agent + 準備日誌
+  provisioner "shell" {
+    inline_shebang   = "/usr/bin/env bash"
+    environment_vars = ["DEBIAN_FRONTEND=noninteractive"]
+
+    inline = [
+      # 安裝 CloudWatch Agent（Ubuntu）
+      "sudo apt-get update -y -o Acquire::Retries=5",
+      "if ! command -v amazon-cloudwatch-agent >/dev/null 2>&1; then " 
+        # 官方 deb（amd64）
+        "wget -q https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb && " 
+        "sudo apt-get install -y ./amazon-cloudwatch-agent.deb; "
+      "fi",
+
+      # （可選）先把 nginx 套件裝好，但不下發站台設定；站台設定交給 userdata 用 ${app_port} 產生
+      "if ! dpkg -s nginx >/dev/null 2>&1; then sudo apt-get install -y nginx; fi",
+
+      # 建立 webapp 日誌檔，先寫一行，讓 Log Stream 能即時出現
+      "sudo install -d -m 0755 /var/log/webapp",
+      "sudo touch /var/log/webapp/app.log",
+      "sudo chown csye6225:csye6225 /var/log/webapp/app.log",
+      "sudo chmod 0664 /var/log/webapp/app.log",
+      "echo \"bootstrap cw $(date -u +%FT%TZ)\" | sudo tee -a /var/log/webapp/app.log >/dev/null",
+
+      # 預先建立 agent 設定目錄（JSON 開機時由 userdata 寫入）
+      "sudo install -d -m 0755 /opt/aws/amazon-cloudwatch-agent/etc",
+
+      # 啟用服務（不強制啟動，避免 AMI 打包時啟動失敗）
+      "sudo systemctl enable amazon-cloudwatch-agent || true"
+    ]
+  }
 }
