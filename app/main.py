@@ -18,7 +18,6 @@ from app.routers.product import router as product_router
 import logging, os
 from app.core.logging_config import configure_logging
 from app.middleware.error_logging import unhandled_exception_handler
-from app.middleware.http_logging import HttpLogMiddleware
 from app.routers.health import router as health_router
 from statsd import StatsClient
 from time import perf_counter
@@ -31,7 +30,6 @@ log = logging.getLogger("webapp")
 
 app = FastAPI()
 
-# app.add_middleware(HttpLogMiddleware)
 # app.include_router(health_router)
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
