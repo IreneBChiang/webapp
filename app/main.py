@@ -21,13 +21,22 @@ from app.middleware.error_logging import unhandled_exception_handler
 # from app.routers.health import router as health_router
 from statsd import StatsClient
 from time import perf_counter
-import logging
+import logging, os
 stats = StatsClient(host="127.0.0.1", port=8125, prefix="api")
 
-# configure_logging()  # 讓所有 logger 都用 JSON 格式dk
-# LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-# logging.getLogger().setLevel(LOG_LEVEL)
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%SZ",
+)
+
 log = logging.getLogger("webapp")
+log.setLevel(LOG_LEVEL)
+log.propagate = False
+# 若環境/uvicorn 沒替你掛 handler，補一個到 stdout（systemd 會把 stdout 寫到 /var/log/webapp/app.log）
+if not log.handlers:
+    log.addHandler(logging.StreamHandler())
 
 app = FastAPI()
 
@@ -106,9 +115,9 @@ async def healthz(req: Request):
         db.commit()
         log.info("GET /healthz - DB insert success, returning 200")
         return Response(status_code=HTTP_200_OK, headers=NO_CACHE)
-    except Exception:
+    except Exception as e:
         db.rollback()
-        log.error("GET /healthz - DB insert failed: %s", exc_info=True)
+        log.error("GET /healthz - DB insert failed: %s", e, exc_info=True)
         return Response(status_code=HTTP_503_SERVICE_UNAVAILABLE, headers=NO_CACHE)
     finally:
         db.close()
