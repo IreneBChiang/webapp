@@ -25,6 +25,8 @@ import logging, os, json
 from datetime import datetime
 stats = StatsClient(host="127.0.0.1", port=8125, prefix="api")
 
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
 # 自訂 JSON 格式 formatter
 class JsonFormatter(logging.Formatter):
     def format(self, record):
