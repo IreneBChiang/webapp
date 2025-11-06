@@ -21,22 +21,34 @@ from app.middleware.error_logging import unhandled_exception_handler
 # from app.routers.health import router as health_router
 from statsd import StatsClient
 from time import perf_counter
-import logging, os
+import logging, os, json
+from datetime import datetime
 stats = StatsClient(host="127.0.0.1", port=8125, prefix="api")
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-logging.basicConfig(
-    level=LOG_LEVEL,
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-    datefmt="%Y-%m-%dT%H:%M:%SZ",
-)
 
+# 自訂 JSON 格式 formatter
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        # 若有例外資訊（exception）就附上
+        if record.exc_info:
+            log_record["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_record)
+
+# 建立 handler + 使用 JSON formatter
+handler = logging.StreamHandler()
+handler.setFormatter(JsonFormatter())
+
+# 套用到全域 logging
+logging.basicConfig(level=LOG_LEVEL, handlers=[handler])
 log = logging.getLogger("webapp")
 log.setLevel(LOG_LEVEL)
-# log.propagate = False
-# 若環境/uvicorn 沒替你掛 handler，補一個到 stdout（systemd 會把 stdout 寫到 /var/log/webapp/app.log）
-# if not log.handlers:
-#     log.addHandler(logging.StreamHandler())
 
 app = FastAPI()
 
