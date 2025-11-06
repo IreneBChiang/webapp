@@ -45,6 +45,10 @@ class JsonFormatter(logging.Formatter):
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
 
+# 確保你的 formatter 不被 uvicorn 覆蓋
+for h in logging.root.handlers[:]:
+    logging.root.removeHandler(h)
+
 # 套用到全域 logging
 logging.basicConfig(level=LOG_LEVEL, handlers=[handler])
 log = logging.getLogger("webapp")
