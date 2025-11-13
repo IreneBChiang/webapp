@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, func, UniqueConstraint, BigInteger
+from sqlalchemy import Column, Integer, String, DateTime, func, UniqueConstraint, BigInteger, Boolean
 from sqlalchemy.orm import validates
 from email_validator import validate_email, EmailNotValidError
 from datetime import datetime, timezone
@@ -18,6 +18,11 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     account_created = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     account_updated = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+    # A09 新增欄位
+    is_verified = Column(Boolean, nullable=False, default=False)
+    verification_token = Column(String(64), unique=True, nullable=True)
+    verification_expiry = Column(DateTime(timezone=True), nullable=True)
 
     # unique email
     __table_args__ = (UniqueConstraint("email", name="uq_users_email"),)

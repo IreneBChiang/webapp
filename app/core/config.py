@@ -15,3 +15,6 @@ PORT = int(os.getenv("PORT", "8080"))
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 # if not S3_BUCKET_NAME:
 #     raise ValueError("S3_BUCKET_NAME not set — check your .env or Terraform user_data")
+
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+USER_SIGNUP_TOPIC_ARN = os.getenv("USER_SIGNUP_TOPIC_ARN", "")

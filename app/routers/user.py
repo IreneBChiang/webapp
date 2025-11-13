@@ -1,10 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, status, Query
 from sqlalchemy.orm import Session
 
 from app.core.security import get_db, hash_password, get_current_user
 from app.models.user import User
 from app.schemas.user import UserCreate, UserOut
 import logging
+import boto3
+from botocore.exceptions import ClientError
+from uuid import uuid4
+from datetime import datetime, timedelta
+import json
+
+from app.core import config
+
+sns_client = boto3.client("sns", region_name=config.AWS_REGION)
 
 # 建立 logger
 log = logging.getLogger("webapp.user")
@@ -20,15 +29,53 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
         log.warning("POST /v1/user - user already exists: %s", payload.username)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
 
+    # A09：產生驗證 token + 過期時間（例如 2 分鐘）
+    verification_token = uuid4().hex
+    verification_expiry = datetime.utcnow() + timedelta(minutes=1)
+
+    # 建立 user：is_verified 預設 False，帶入 token + expiry
     user = User(
         email=payload.username,
         first_name=payload.first_name,
         last_name=payload.last_name,
         password_hash=hash_password(payload.password),
+        is_verified=False,
+        verification_token=verification_token,
+        verification_expiry=verification_expiry,
     )
+
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # 準備要丟到 SNS 的訊息（JSON 字串）
+    message = {
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "token": verification_token,
+        "verification_expiry": verification_expiry.isoformat(),
+    }
+
+    topic_arn = config.USER_SIGNUP_TOPIC_ARN
+    if not topic_arn:
+        # 測試環境沒設 SNS，就跳過，不要 500
+        log.warning(
+            "USER_SIGNUP_TOPIC_ARN not set; skipping SNS publish for user %s", 
+            user.email,
+        )
+    else:
+        try:
+            sns_client.publish(
+                TopicArn=topic_arn,
+                Message=json.dumps(message),
+                Subject="User Signup",
+            )
+            log.info("Published signup message to SNS for user %s", user.email)
+        except ClientError as e:
+            # 這裡看你要不要 rollback；為了穩定也可以改成只 log 不 rollback
+            log.error("Failed to publish signup message to SNS: %s", e)
+
     log.info("POST /v1/user - user created: id=%s email=%s", user.id, user.email)
     return UserOut(
         id=user.id,
@@ -96,3 +143,47 @@ def update_me(
     db.commit()
     log.info("PUT /v1/user/%s - update success", userId)
     return
+
+@router.get("/verify")
+def verify_user(
+    email: str = Query(...),
+    token: str = Query(...),
+    db: Session = Depends(get_db)
+):
+    # 找 user：必須 email + token 同時符合
+    user = db.query(User).filter(
+        User.email == email,
+        User.verification_token == token
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token"
+        )
+
+    # token 過期 (規定：1 minute)
+    if not user.verification_expiry or user.verification_expiry < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token expired"
+        )
+
+    # 已驗證過不得再驗證
+    if user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already verified"
+        )
+
+    # 更新 user：移除 token、設為 verified
+    user.is_verified = True
+    user.verification_token = None
+    user.verification_expiry = None
+    user.account_updated = datetime.now(timezone.utc)
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {"message": "User verified successfully"}

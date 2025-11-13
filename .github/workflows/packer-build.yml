@@ -39,11 +39,11 @@ jobs:
             -var "region=${{ secrets.AWS_REGION }}" \
             -var "demo_account_id=${{ secrets.DEMO_ACCOUNT_ID }}" \
             -var "app_artifact=${{ github.workspace }}/out/artifact.zip" \
-            -var "db_pass=${{ secrets.APP_DB_PASS }}" \
             mysql-ami.pkr.hcl
 
-      # 建立 AMI
+      # 建立 AMI (DEV)
       - name: Packer build
+        id: packer
         working-directory: packer
         run: |
           packer build \
@@ -52,5 +52,92 @@ jobs:
             -var "app_artifact=${{ github.workspace }}/out/artifact.zip" \
             -var "db_name=${{ secrets.DB_NAME }}" \
             -var "db_user=${{ secrets.DB_USER }}" \
-            -var "db_pass=${{ secrets.APP_DB_PASS }}" \
-            mysql-ami.pkr.hcl
+            mysql-ami.pkr.hcl | tee build.log
+
+          # 從 Packer log 抓 AMI ID
+          AMI_ID=$(grep 'artifact,0,id' build.log | tail -n 1 | cut -d':' -f2)
+          echo "AMI_ID=$AMI_ID" >> $GITHUB_OUTPUT
+          echo "Built AMI: $AMI_ID"
+
+      #   Share AMI to DEMO account
+      - name: Share AMI with Demo account
+        run: |
+          aws ec2 modify-image-attribute \
+            --image-id "${{ steps.packer.outputs.AMI_ID }}" \
+            --launch-permission "Add=[{UserId=${{ secrets.DEMO_ACCOUNT_ID }}}]"
+
+      #   Switch AWS credentials → DEMO
+      - name: Configure AWS credentials (DEMO)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.DEMO_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DEMO_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      #   Create new Launch Template version
+      - name: Create Launch Template Version
+        id: lt
+        run: |
+          LT_ID="${{ secrets.LAUNCH_TEMPLATE_ID }}"
+          AMI="${{ steps.packer.outputs.AMI_ID }}"
+
+          echo "Updating Launch Template $LT_ID to AMI $AMI"
+
+          NEW_VERSION=$(aws ec2 create-launch-template-version \
+            --launch-template-id "$LT_ID" \
+            --source-version '$Latest' \
+            --launch-template-data "{\"ImageId\":\"$AMI\"}" \
+            --query 'LaunchTemplateVersion.VersionNumber' \
+            --output text)
+
+          echo "New Launch Template version: $NEW_VERSION"
+          echo "LT_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          # 設成 default version
+          aws ec2 modify-launch-template \
+            --launch-template-id "$LT_ID" \
+            --default-version "$NEW_VERSION"
+
+      #   Start ASG Instance Refresh
+      - name: Start Instance Refresh
+        id: refresh
+        run: |
+          REFRESH_ID=$(aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name "${{ secrets.ASG_NAME }}" \
+            --preferences MinHealthyPercentage=90,InstanceWarmup=300 \
+            --query 'InstanceRefreshId' \
+            --output text)
+
+          echo "REFRESH_ID=$REFRESH_ID" >> $GITHUB_OUTPUT
+          echo "Started instance refresh: $REFRESH_ID"
+
+      #   Wait for refresh to complete
+      - name: Wait for instance refresh
+        run: |
+          ASG="${{ secrets.ASG_NAME }}"
+          REFRESH="${{ steps.refresh.outputs.REFRESH_ID }}"
+
+          echo "Waiting for instance refresh..."
+
+          for i in {1..60}; do   # 最多等 30 分鐘
+            STATUS=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name "$ASG" \
+              --instance-refresh-ids "$REFRESH" \
+              --query 'InstanceRefreshes[0].Status' \
+              --output text)
+
+            echo "Status: $STATUS"
+
+            if [[ "$STATUS" == "Successful" ]]; then
+              echo "Instance refresh completed successfully."
+              exit 0
+            elif [[ "$STATUS" == "Failed" || "$STATUS" == "Cancelled" ]]; then
+              echo "Instance refresh FAILED: $STATUS"
+              exit 1
+            fi
+
+            sleep 30
+          done
+
+          echo "Timeout waiting for instance refresh."
+          exit 1
