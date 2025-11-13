@@ -37,6 +37,7 @@ variable "db_user" {
 variable "db_pass" {
   type      = string
   sensitive = true
+  default   = "unused12345!"
 }
 
 variable "service_name" {
