@@ -19,6 +19,11 @@ class User(Base):
     account_created = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     account_updated = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
+    # A09 新增欄位
+    is_verified = Column(Boolean, nullable=False, default=False)
+    verification_token = Column(String(64), unique=True, nullable=True)
+    verification_expiry = Column(DateTime(timezone=True), nullable=True)
+
     # unique email
     __table_args__ = (UniqueConstraint("email", name="uq_users_email"),)
 
