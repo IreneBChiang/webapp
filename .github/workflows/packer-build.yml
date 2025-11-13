@@ -41,7 +41,7 @@ jobs:
             -var "app_artifact=${{ github.workspace }}/out/artifact.zip" \
             mysql-ami.pkr.hcl
 
-            # 建立 AMI (DEV)
+      # 建立 AMI (DEV)
       - name: Packer build
         id: packer
         working-directory: packer
@@ -73,15 +73,14 @@ jobs:
           # 輸出給後續 steps 使用
           echo "ami_id=$AMI_ID" >> "$GITHUB_OUTPUT"
 
-      #   Share AMI to DEMO account
-        - name: Share AMI with Demo account
-          run: |
-            aws ec2 modify-image-attribute \
-              --image-id "${{ steps.packer.outputs.ami_id }}" \
-              --launch-permission "Add=[{UserId=${{ secrets.DEMO_ACCOUNT_ID }}}]"
+      # Share AMI to DEMO account
+      - name: Share AMI with Demo account
+        run: |
+          aws ec2 modify-image-attribute \
+            --image-id "${{ steps.packer.outputs.ami_id }}" \
+            --launch-permission "Add=[{UserId=${{ secrets.DEMO_ACCOUNT_ID }}}]"
 
-
-      #   Switch AWS credentials → DEMO
+      # Switch AWS credentials → DEMO
       - name: Configure AWS credentials (DEMO)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -89,7 +88,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.DEMO_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      #   Create new Launch Template version
+      # Create new Launch Template version
       - name: Create Launch Template Version
         id: lt
         run: |
@@ -112,7 +111,7 @@ jobs:
             --launch-template-id "$LT_ID" \
             --default-version "$NEW_VERSION"
 
-      #   Start ASG Instance Refresh
+      # Start ASG Instance Refresh
       - name: Start Instance Refresh
         id: refresh
         run: |
@@ -122,10 +121,10 @@ jobs:
             --query 'InstanceRefreshId' \
             --output text)
 
-          echo "REFRESH_ID=$REFRESH_ID" >> $GITHUB_OUTPUT
+          echo "REFRESH_ID=$REFRESH_ID" >> "$GITHUB_OUTPUT"
           echo "Started instance refresh: $REFRESH_ID"
 
-      #   Wait for refresh to complete
+      # Wait for refresh to complete
       - name: Wait for instance refresh
         run: |
           ASG="${{ secrets.ASG_NAME }}"
