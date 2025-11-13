@@ -41,12 +41,13 @@ jobs:
             -var "app_artifact=${{ github.workspace }}/out/artifact.zip" \
             mysql-ami.pkr.hcl
 
-      # 建立 AMI (DEV)
+            # 建立 AMI (DEV)
       - name: Packer build
         id: packer
         working-directory: packer
         run: |
-          packer build \
+          # 用 machine-readable 讓 log 好解析
+          packer build -machine-readable \
             -var "region=${{ secrets.AWS_REGION }}" \
             -var "demo_account_id=${{ secrets.DEMO_ACCOUNT_ID }}" \
             -var "app_artifact=${{ github.workspace }}/out/artifact.zip" \
@@ -54,17 +55,31 @@ jobs:
             -var "db_user=${{ secrets.DB_USER }}" \
             mysql-ami.pkr.hcl | tee build.log
 
-          # 從 Packer log 抓 AMI ID
-          AMI_ID=$(grep 'artifact,0,id' build.log | tail -n 1 | cut -d':' -f2)
-          echo "AMI_ID=$AMI_ID" >> $GITHUB_OUTPUT
+          echo "===== PACKER LOG (last lines) ====="
+          tail -n 20 build.log
+
+          # 從 machine-readable log 抓出 AMI ID
+          # 典型格式：
+          # 1592865879,amazon-ebs,artifact,0,id,us-east-1:ami-1234567890abcdef
+          AMI_ID=$(grep ',artifact,0,id,' build.log | tail -n 1 | cut -d, -f6 | cut -d: -f2)
+
+          if [ -z "$AMI_ID" ]; then
+            echo "ERROR: Failed to parse AMI ID from packer log"
+            exit 1
+          fi
+
           echo "Built AMI: $AMI_ID"
 
+          # 輸出給後續 steps 使用
+          echo "ami_id=$AMI_ID" >> "$GITHUB_OUTPUT"
+
       #   Share AMI to DEMO account
-      - name: Share AMI with Demo account
-        run: |
-          aws ec2 modify-image-attribute \
-            --image-id "${{ steps.packer.outputs.AMI_ID }}" \
-            --launch-permission "Add=[{UserId=${{ secrets.DEMO_ACCOUNT_ID }}}]"
+        - name: Share AMI with Demo account
+          run: |
+            aws ec2 modify-image-attribute \
+              --image-id "${{ steps.packer.outputs.ami_id }}" \
+              --launch-permission "Add=[{UserId=${{ secrets.DEMO_ACCOUNT_ID }}}]"
+
 
       #   Switch AWS credentials → DEMO
       - name: Configure AWS credentials (DEMO)
@@ -79,7 +94,7 @@ jobs:
         id: lt
         run: |
           LT_ID="${{ secrets.LAUNCH_TEMPLATE_ID }}"
-          AMI="${{ steps.packer.outputs.AMI_ID }}"
+          AMI="${{ steps.packer.outputs.ami_id }}"
 
           echo "Updating Launch Template $LT_ID to AMI $AMI"
 
@@ -91,9 +106,8 @@ jobs:
             --output text)
 
           echo "New Launch Template version: $NEW_VERSION"
-          echo "LT_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "LT_VERSION=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
-          # 設成 default version
           aws ec2 modify-launch-template \
             --launch-template-id "$LT_ID" \
             --default-version "$NEW_VERSION"
