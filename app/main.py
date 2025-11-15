@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from starlette.status import (
     HTTP_200_OK,
@@ -6,6 +6,8 @@ from starlette.status import (
     HTTP_405_METHOD_NOT_ALLOWED,
     HTTP_503_SERVICE_UNAVAILABLE,
 )
+from sqlalchemy.orm import Session
+
 from app.db.session import SessionLocal, Base, engine
 from app.models.health_check import HealthCheck
 from alembic import command
@@ -15,14 +17,15 @@ from app.models.user import User
 from app.models.product import Product
 from app.routers.user import router as user_router
 from app.routers.product import router as product_router
-import logging, os
 from app.core.logging_config import configure_logging
 from app.middleware.error_logging import unhandled_exception_handler
-# from app.routers.health import router as health_router
+from app.core.security import get_db  
+
 from statsd import StatsClient
 from time import perf_counter
 import logging, os, json
-from datetime import datetime
+from datetime import datetime, timezone 
+
 stats = StatsClient(host="127.0.0.1", port=8125, prefix="api")
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -137,3 +140,50 @@ async def healthz(req: Request):
         return Response(status_code=HTTP_503_SERVICE_UNAVAILABLE, headers=NO_CACHE)
     finally:
         db.close()
+
+@app.get("/validateEmail")
+def validate_email(
+    email: str = Query(...),
+    token: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    # 找 user：必須 email + token 同時符合
+    user = db.query(User).filter(
+        User.email == email,
+        User.verification_token == token,
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token",
+        )
+
+    # 目前時間（UTC）
+    now = datetime.now(timezone.utc)
+
+    # token 過期 (規定：1 minute)
+    if not user.verification_expiry or user.verification_expiry < now:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Token expired",
+        )
+
+    # 已驗證過不得再驗證
+    if user.is_verified:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="User already verified",
+        )
+
+    # 更新 user：移除 token、設為 verified
+    user.is_verified = True
+    user.verification_token = None
+    user.verification_expiry = None
+    user.account_updated = now
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {"message": "User verified successfully"}

@@ -8,7 +8,7 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 from uuid import uuid4
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 
 from app.core import config
@@ -29,9 +29,9 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
         log.warning("POST /v1/user - user already exists: %s", payload.username)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
 
-    # A09：產生驗證 token + 過期時間（例如 2 分鐘）
+    # A09：產生驗證 token + 過期時間（規定：1 minute）
     verification_token = uuid4().hex
-    verification_expiry = datetime.utcnow() + timedelta(minutes=1)
+    verification_expiry = datetime.now(timezone.utc) + timedelta(minutes=1)
 
     # 建立 user：is_verified 預設 False，帶入 token + expiry
     user = User(
@@ -144,46 +144,3 @@ def update_me(
     log.info("PUT /v1/user/%s - update success", userId)
     return
 
-@router.get("/verify")
-def verify_user(
-    email: str = Query(...),
-    token: str = Query(...),
-    db: Session = Depends(get_db)
-):
-    # 找 user：必須 email + token 同時符合
-    user = db.query(User).filter(
-        User.email == email,
-        User.verification_token == token
-    ).first()
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token"
-        )
-
-    # token 過期 (規定：1 minute)
-    if not user.verification_expiry or user.verification_expiry < datetime.now(timezone.utc):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Token expired"
-        )
-
-    # 已驗證過不得再驗證
-    if user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User already verified"
-        )
-
-    # 更新 user：移除 token、設為 verified
-    user.is_verified = True
-    user.verification_token = None
-    user.verification_expiry = None
-    user.account_updated = datetime.now(timezone.utc)
-
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    return {"message": "User verified successfully"}
