@@ -162,14 +162,29 @@ def validate_email(
     # 目前時間（UTC）
     now = datetime.now(timezone.utc)
 
-    # token 過期 (規定：1 minute)
-    if not user.verification_expiry or user.verification_expiry < now:
+    # 先拿出 expiry
+    expiry = user.verification_expiry
+
+    # 沒有 expiry 或是型別錯就當作過期
+    if not expiry:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
             detail="Token expired",
         )
 
-    # 已驗證過不得再驗證
+    # 如果 DB 裡是 naive datetime，幫它補上 UTC
+    if expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+
+    # 再來比較
+    # tocken過期
+    if expiry < now:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Token expired",
+        )
+
+    # 驗證過
     if user.is_verified:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
